@@ -1,2 +1,2 @@
 # fetch-challenge
-a receipt processing API
+a receipt-processing API
