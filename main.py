@@ -1,54 +1,83 @@
 import json # The main functions are json.loads(), which turns JSON objects into strings; and json.dumps(), which does the reverse
 import hashlib # the function hashlib.sha256() is a secure hashing algorithm
-from flask import *
+import requests
+from fastapi import FastAPI, Request
 from math import ceil
+from pydantic import BaseModel
 
-database = {}
+app = FastAPI()
 
-json_receipt = """
-{
-  "retailer": "M&M Corner Market",
-  "purchaseDate": "2022-03-20",
-  "purchaseTime": "14:33",
+database = {"49f8d3bb7c9e68f1d2edebaf54e250a59f760c5cf7eab8136fb289cd7b2fe057": {
+  "retailer": "Target",
+  "purchaseDate": "2022-01-01",
+  "purchaseTime": "13:01",
   "items": [
     {
-      "shortDescription": "Gatorade",
-      "price": "2.25"
+      "shortDescription": "Mountain Dew 12PK",
+      "price": "6.49"
     },{
-      "shortDescription": "Gatorade",
-      "price": "2.25"
+      "shortDescription": "Emils Cheese Pizza",
+      "price": "12.25"
     },{
-      "shortDescription": "Gatorade",
-      "price": "2.25"
+      "shortDescription": "Knorr Creamy Chicken",
+      "price": "1.26"
     },{
-      "shortDescription": "Gatorade",
-      "price": "2.25"
+      "shortDescription": "Doritos Nacho Cheese",
+      "price": "3.35"
+    },{
+      "shortDescription": "Klarbrunn 12PK 12 FL OZ",
+      "price": "12.00"
     }
   ],
-  "total": "9.00"
+  "total": "35.35"
 }
-"""
+}
 
-app = Flask(__name__)
+class Item(BaseModel):
+    shortDescription: str
+    price: str
 
-@app.route('/receipts/process', methods=['POST'])
+class Receipt(BaseModel):
+    # to define a class that inherits from BaseModel, we simply list
+    # the attributes and their types
+    retailer: str
+    purchaseDate: str
+    purchaseTime: str
+    items: Item
+    total: str
+
+
+@app.get('/receipts/process')
 def process():
-    # our database is a dictionary, where we will use our id as the key and the
-    # JSON object-cum-dictionary as the value
+    """
+    Process
+    
+    This path operation takes in a receipt as a JSON object from the request
+    body, generates an ID using a hash function, and returns that id
+
+    Parameters:
+    - None
+
+    Returns the id as a JSON object
+    """
+    # our database is a dictionary (defined globally), where we will use
+    # our id as the key and the JSON object-cum-dictionary (the receipt)
+    # as the value
 
     # prepare the key and value
-    new_db_entry = json.loads(json_receipt)
-    json_id = make_id()
-    new_db_key = json.loads(json_id)['id']
+    new_db_entry = requests.get('https://run.mocky.io/v3/a06975d3-cc19-431d-9358-53bc2afbd009').json()
+    id_string = make_id(new_db_entry)
+    new_db_key = id_string['id']
 
-    # add the key-value pair to the database and return the JSON id object
+    # add the key-value pair to the database and return id string,
+    # which FastAPI by default converts to JSON
     database[new_db_key] = new_db_entry
-    return json_id
+    return id_string
     
 
-def make_id():
+def make_id(json_receipt):
     # encode the JSON payload in bytes before hashing
-    encoded_receipt = json_receipt.encode()
+    encoded_receipt = str(json_receipt).encode()
 
     # run the hashing algorithm
     hash_value = hashlib.sha256(encoded_receipt)
@@ -56,15 +85,24 @@ def make_id():
     # convert the hash object to a string
     hash_string = hash_value.hexdigest()
 
-    # store the hash value in a dictionary
+    # store the hash value in a dictionary and return it
     dict_to_return = {'id': hash_string}
+    return dict_to_return
 
-    # convert the dictionary to a JSON object and return it
-    json_dict = json.dumps(dict_to_return)
-    return json_dict
+@app.get('/receipts/{id}/points')
+def points(id: str):
+    """
+    Points
+    
+    This path operation takes in an ID, looks up the corresponding
+    receipts, and computes the "score" of that receipt according
+    to a given set of arbitrary rules
 
-@app.route(f'/receipts/{process()}/points', methods=['GET'])
-def points(id):
+    Parameters:
+    - id
+
+    Returns the total score as a JSON object
+    """
     # look up the receipt in the database
     receipt = database[id]
 
@@ -117,10 +155,6 @@ def points(id):
     elif hour == 14 and minute != 00:
         score += 10
 
-    # store the hash value in a dictionary
+    # store the hash value in a dictionary and return it
     dict_to_return = {'points': score}
-
-    # convert the dictionary to a JSON object and return it
-    json_dict = json.dumps(dict_to_return)
-    return json_dict
-
+    return dict_to_return
