@@ -65,7 +65,8 @@ def process():
     # as the value
 
     # prepare the key and value
-    new_db_entry = requests.get('https://run.mocky.io/v3/a06975d3-cc19-431d-9358-53bc2afbd009').json()
+    request_url = 'https://run.mocky.io/v3/a06975d3-cc19-431d-9358-53bc2afbd009'
+    new_db_entry = requests.get(request_url).json()
     id_string = make_id(new_db_entry)
     new_db_key = id_string['id']
 
