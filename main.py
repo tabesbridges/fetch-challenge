@@ -1,7 +1,6 @@
-import json # The main functions are json.loads(), which turns JSON objects into strings; and json.dumps(), which does the reverse
 import hashlib # the function hashlib.sha256() is a secure hashing algorithm
 import requests
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from math import ceil
 from pydantic import BaseModel
 
