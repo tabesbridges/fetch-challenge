@@ -1,36 +1,12 @@
 import hashlib # the function hashlib.sha256() is a secure hashing algorithm
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from math import ceil
 from pydantic import BaseModel
 
 app = FastAPI()
 
-database = {"49f8d3bb7c9e68f1d2edebaf54e250a59f760c5cf7eab8136fb289cd7b2fe057": {
-  "retailer": "Target",
-  "purchaseDate": "2022-01-01",
-  "purchaseTime": "13:01",
-  "items": [
-    {
-      "shortDescription": "Mountain Dew 12PK",
-      "price": "6.49"
-    },{
-      "shortDescription": "Emils Cheese Pizza",
-      "price": "12.25"
-    },{
-      "shortDescription": "Knorr Creamy Chicken",
-      "price": "1.26"
-    },{
-      "shortDescription": "Doritos Nacho Cheese",
-      "price": "3.35"
-    },{
-      "shortDescription": "Klarbrunn 12PK 12 FL OZ",
-      "price": "12.00"
-    }
-  ],
-  "total": "35.35"
-}
-}
+database = {}
 
 class Item(BaseModel):
     shortDescription: str
@@ -45,6 +21,13 @@ class Receipt(BaseModel):
     items: Item
     total: str
 
+@app.post("/receive_data")
+async def receive_data(receipt: Receipt):
+    data = await request.json()
+    return {
+        "status" : "SUCCESS",
+        "data" : receipt
+    }
 
 @app.get('/receipts/process')
 def process():
@@ -64,8 +47,7 @@ def process():
     # as the value
 
     # prepare the key and value
-    request_url = 'https://run.mocky.io/v3/a06975d3-cc19-431d-9358-53bc2afbd009'
-    new_db_entry = requests.get(request_url).json()
+    new_db_entry = getInformation()['data']
     id_string = make_id(new_db_entry)
     new_db_key = id_string['id']
 
