@@ -1,7 +1,7 @@
 import hashlib # the function hashlib.sha256() is a secure hashing algorithm
-import requests
 from fastapi import FastAPI, Request
 from math import ceil
+from typing import List, Optional
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -11,6 +11,8 @@ database = {}
 class Item(BaseModel):
     shortDescription: str
     price: str
+    def __getitem__(self, item):
+        return getattr(self, item)
 
 class Receipt(BaseModel):
     # to define a class that inherits from BaseModel, we simply list
@@ -18,19 +20,17 @@ class Receipt(BaseModel):
     retailer: str
     purchaseDate: str
     purchaseTime: str
-    items: Item
     total: str
+    # to define a "list of dictionaries" type, we use the construction below
+    # (having previously defined the Item type)
+    items: List[Item]
+    score: Optional[str]
 
-@app.post("/receive_data")
-async def receive_data(receipt: Receipt):
-    data = await request.json()
-    return {
-        "status" : "SUCCESS",
-        "data" : receipt
-    }
+    def __getitem__(self, item):
+        return getattr(self, item)
 
-@app.get('/receipts/process')
-def process():
+@app.post('/receipts/process')
+async def process(receipt: Receipt):
     """
     Process
     
@@ -47,13 +47,14 @@ def process():
     # as the value
 
     # prepare the key and value
-    new_db_entry = getInformation()['data']
-    id_string = make_id(new_db_entry)
+    id_string = make_id(receipt)
     new_db_key = id_string['id']
+    score = compute_score(receipt)
+    receipt.score = score
 
     # add the key-value pair to the database and return id string,
     # which FastAPI by default converts to JSON
-    database[new_db_key] = new_db_entry
+    database[new_db_key] = receipt
     return id_string
     
 
@@ -87,10 +88,16 @@ def points(id: str):
     """
     # look up the receipt in the database
     receipt = database[id]
+    score = receipt['score']
 
+    # store the score in a dictionary and return it
+    dict_to_return = {'points': score}
+    return dict_to_return
+
+def compute_score(receipt):
     # extract strings from the receipt
-    retailer = receipt["retailer"]
-    purchase_date = receipt["purchaseDate"]
+    retailer = receipt['retailer']
+    purchase_date = receipt['purchaseDate']
     purchase_time = receipt["purchaseTime"]
     total = receipt["total"]
     # and extract the final entry of the receipt, which is itself a list of dictionaries
@@ -136,7 +143,5 @@ def points(id: str):
         score += 10
     elif hour == 14 and minute != 00:
         score += 10
-
-    # store the hash value in a dictionary and return it
-    dict_to_return = {'points': score}
-    return dict_to_return
+    
+    return score
